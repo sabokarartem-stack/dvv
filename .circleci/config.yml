@@ -85,7 +85,7 @@ jobs:
           command: |
             . venv/bin/activate
             # Ініціалізація
-            eb init rails-app -r $AWS_DEFAULT_REGION -p docker
+            eb init railsapp -r $AWS_DEFAULT_REGION -p docker
             # Деплой в існуюче середовище
             eb deploy railsapp-env
 
