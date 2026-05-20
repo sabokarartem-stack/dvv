@@ -87,7 +87,7 @@ jobs:
             # Ініціалізація
             eb init rails-app -r $AWS_DEFAULT_REGION -p docker
             # Деплой в існуюче середовище
-            eb deploy rails-app-env
+            eb deploy railsapp-env
 
 workflows:
   version: 2
