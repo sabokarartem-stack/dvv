@@ -43,5 +43,6 @@ module DevopsProject
 
     # Дозволяємо доступ з доменів AWS Elastic Beanstalk
     config.hosts << /.*\.elasticbeanstalk\.com/
+    config.hosts << "www.example.com"
   end
 end
