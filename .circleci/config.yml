@@ -76,7 +76,6 @@ jobs:
           name: Встановлення AWS EB CLI
           command: |
             sudo apt-get update && sudo apt-get install -y python3-pip python3-venv
-            # Використовуємо віртуальне середовище, щоб уникнути конфліктів у Linux
             python3 -m venv venv
             . venv/bin/activate
             pip install awsebcli
@@ -84,9 +83,10 @@ jobs:
           name: Деплой у хмару
           command: |
             . venv/bin/activate
-            # Ініціалізація
             eb init railsapp -r $AWS_DEFAULT_REGION -p docker
-            # Деплой в існуюче середовище
+            
+            sed -i "s|artemchik2005/rails-api:latest|$DOCKER_USERNAME/rails-api:$CIRCLE_SHA1|g" Dockerrun.aws.json
+            
             eb deploy railsapp-env
 
 workflows:
