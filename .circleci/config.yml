@@ -45,12 +45,11 @@ jobs:
           # Запускаємо через bundle exec
           command: bundle exec rails test
 
-  # Етап 2: Збірка та публікація Docker-образу
+  # Етап 2: Збірка та публікація Docker-образу (залишається без змін)
   build-and-push:
     executor: docker-executor
     steps:
       - checkout
-      # Ця команда необхідна в CircleCI для можливості використовувати команди docker
       - setup_remote_docker:
           version: default
       - run:
@@ -62,11 +61,33 @@ jobs:
             IMAGE_NAME="$DOCKER_USERNAME/rails-api"
             docker build -t $IMAGE_NAME:latest -t $IMAGE_NAME:$CIRCLE_SHA1 .
       - run:
-          name: Публікація образу в Docker Hub
+          name: Публікація образу
           command: |
             IMAGE_NAME="$DOCKER_USERNAME/rails-api"
             docker push $IMAGE_NAME:latest
             docker push $IMAGE_NAME:$CIRCLE_SHA1
+
+  # Етап 3: Розгортання в AWS Elastic Beanstalk
+  deploy-to-aws:
+    executor: docker-executor
+    steps:
+      - checkout
+      - run:
+          name: Встановлення AWS EB CLI
+          command: |
+            sudo apt-get update && sudo apt-get install -y python3-pip python3-venv
+            # Використовуємо віртуальне середовище, щоб уникнути конфліктів у Linux
+            python3 -m venv venv
+            . venv/bin/activate
+            pip install awsebcli
+      - run:
+          name: Деплой у хмару
+          command: |
+            . venv/bin/activate
+            # Ініціалізація (важливо: вкажи свій регіон замість eu-central-1, якщо він інший)
+            eb init rails-app -r $AWS_DEFAULT_REGION -p docker
+            # Деплой в існуюче середовище (заміни railsapp-env на свою назву з Кроку 2, якщо вона відрізняється)
+            eb deploy railsapp-env
 
 workflows:
   version: 2
@@ -74,10 +95,14 @@ workflows:
     jobs:
       - test-and-lint
       - build-and-push:
-          # Запускати збірку образу тільки після успішного проходження тестів
           requires:
             - test-and-lint
-          # Виконувати тільки при змінах у гілці main
+          filters:
+            branches:
+              only: main
+      - deploy-to-aws:
+          requires:
+            - build-and-push
           filters:
             branches:
               only: main
