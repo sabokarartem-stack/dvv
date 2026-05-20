@@ -11,6 +11,7 @@ WORKDIR /app
 COPY Gemfile Gemfile.lock ./
 
 # Встановлюємо gems
+RUN gem install parallel -v 2.1.0
 RUN bundle install --jobs 4 --retry 3
 
 # Етап 2: Фінальний мінімальний образ (Production stage)
