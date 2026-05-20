@@ -45,7 +45,7 @@ jobs:
           # Запускаємо через bundle exec
           command: bundle exec rails test
 
-  # Етап 2: Збірка та публікація Docker-образу (залишається без змін)
+  # Етап 2: Збірка та публікація Docker-образу
   build-and-push:
     executor: docker-executor
     steps:
@@ -84,10 +84,10 @@ jobs:
           name: Деплой у хмару
           command: |
             . venv/bin/activate
-            # Ініціалізація (важливо: вкажи свій регіон замість eu-central-1, якщо він інший)
+            # Ініціалізація
             eb init rails-app -r $AWS_DEFAULT_REGION -p docker
-            # Деплой в існуюче середовище (заміни railsapp-env на свою назву з Кроку 2, якщо вона відрізняється)
-            eb deploy railsapp-env
+            # Деплой в існуюче середовище
+            eb deploy rails-app-env
 
 workflows:
   version: 2
