@@ -1,0 +1,83 @@
+version: 2.1
+
+# Визначаємо середовища (executors), в яких будуть виконуватися кроки
+executors:
+  ruby-executor:
+    docker:
+      # Використовуємо офіційний образ CircleCI для Ruby
+      - image: cimg/ruby:3.2.2
+    environment:
+      RAILS_ENV: test
+  docker-executor:
+    docker:
+      # Базовий образ для роботи з Docker
+      - image: cimg/base:current
+
+jobs:
+  # Етап 1: Тестування та Лінтинг
+  test-and-lint:
+    executor: ruby-executor
+    steps:
+      - checkout
+      - run:
+          name: Встановлення системних залежностей
+          command: sudo apt-get update && sudo apt-get install -y build-essential
+      # Використовуємо кеш для пришвидшення встановлення gem-ів
+      - restore_cache:
+          keys:
+            - v1-dependencies-{{ checksum "Gemfile.lock" }}
+            - v1-dependencies-
+      - run:
+          name: Встановлення Ruby Gems
+          command: |
+            bundle config set --local path 'vendor/bundle'
+            bundle install --jobs=4 --retry=3
+      - save_cache:
+          paths:
+            - ./vendor/bundle
+          key: v1-dependencies-{{ checksum "Gemfile.lock" }}
+      - run:
+          name: Запуск лінтера (RuboCop)
+          # Впаде, якщо стиль коду порушено
+          command: bundle exec rubocop
+      - run:
+          name: Запуск автоматизованих тестів (Minitest)
+          # Запускаємо через bundle exec
+          command: bundle exec rails test
+
+  # Етап 2: Збірка та публікація Docker-образу
+  build-and-push:
+    executor: docker-executor
+    steps:
+      - checkout
+      # Ця команда необхідна в CircleCI для можливості використовувати команди docker
+      - setup_remote_docker:
+          version: default
+      - run:
+          name: Авторизація в Docker Hub
+          command: echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+      - run:
+          name: Збірка Docker образу
+          command: |
+            IMAGE_NAME="$DOCKER_USERNAME/rails-api"
+            docker build -t $IMAGE_NAME:latest -t $IMAGE_NAME:$CIRCLE_SHA1 .
+      - run:
+          name: Публікація образу в Docker Hub
+          command: |
+            IMAGE_NAME="$DOCKER_USERNAME/rails-api"
+            docker push $IMAGE_NAME:latest
+            docker push $IMAGE_NAME:$CIRCLE_SHA1
+
+workflows:
+  version: 2
+  ci-cd-pipeline:
+    jobs:
+      - test-and-lint
+      - build-and-push:
+          # Запускати збірку образу тільки після успішного проходження тестів
+          requires:
+            - test-and-lint
+          # Виконувати тільки при змінах у гілці main
+          filters:
+            branches:
+              only: main
